@@ -1,7 +1,9 @@
-﻿using DataLogicLibrary.DTO;
+﻿using DataLogicLibrary.DirectionStrategies;
+using DataLogicLibrary.DTO;
 using DataLogicLibrary.Factories;
 using DataLogicLibrary.Infrastructure.Enums;
 using DataLogicLibrary.Services;
+using DataLogicLibrary.Services.Interfaces;
 using Xunit;
 
 namespace CarSimulatorTest
@@ -21,19 +23,7 @@ namespace CarSimulatorTest
         [Fact]
         public void Test38_GasCannotBecomeNegative()
         {
-            var service = new SimulationLogicService(
-                new DataLogicLibrary.DirectionStrategies.DirectionContext(),
-                movementAction =>
-                {
-                    return movementAction switch
-                    {
-                        MovementAction.Left => new DataLogicLibrary.DirectionStrategies.TurnLeftStrategy(),
-                        MovementAction.Right => new DataLogicLibrary.DirectionStrategies.TurnRightStrategy(),
-                        MovementAction.Forward => new DataLogicLibrary.DirectionStrategies.DriveForwardStrategy(),
-                        MovementAction.Backward => new DataLogicLibrary.DirectionStrategies.ReverseStrategy(),
-                        _ => throw new System.ArgumentException()
-                    };
-                });
+            var service = CreateSimulationLogicService();
 
             var status = new StatusDTO
             {
@@ -51,19 +41,7 @@ namespace CarSimulatorTest
         [Fact]
         public void Test39_EnergyCannotBecomeNegative()
         {
-            var service = new SimulationLogicService(
-                new DataLogicLibrary.DirectionStrategies.DirectionContext(),
-                movementAction =>
-                {
-                    return movementAction switch
-                    {
-                        MovementAction.Left => new DataLogicLibrary.DirectionStrategies.TurnLeftStrategy(),
-                        MovementAction.Right => new DataLogicLibrary.DirectionStrategies.TurnRightStrategy(),
-                        MovementAction.Forward => new DataLogicLibrary.DirectionStrategies.DriveForwardStrategy(),
-                        MovementAction.Backward => new DataLogicLibrary.DirectionStrategies.ReverseStrategy(),
-                        _ => throw new System.ArgumentException()
-                    };
-                });
+            var service = CreateSimulationLogicService();
 
             var status = new StatusDTO
             {
@@ -88,6 +66,25 @@ namespace CarSimulatorTest
             Assert.Equal(CardinalDirection.North, status.CardinalDirection);
             Assert.Equal(20, status.GasValue);
             Assert.Equal(20, status.EnergyValue);
+        }
+
+        private static SimulationLogicService CreateSimulationLogicService()
+        {
+            return new SimulationLogicService(
+                new DirectionContext(),
+                movementAction =>
+                {
+                    return movementAction switch
+                    {
+                        MovementAction.Left => new TurnLeftStrategy(),
+                        MovementAction.Right => new TurnRightStrategy(),
+                        MovementAction.Forward => new DriveForwardStrategy(),
+                        MovementAction.Backward => new ReverseStrategy(),
+                        _ => throw new System.ArgumentException(
+                            "Okänd MovementAction",
+                            nameof(movementAction))
+                    };
+                });
         }
     }
 }
