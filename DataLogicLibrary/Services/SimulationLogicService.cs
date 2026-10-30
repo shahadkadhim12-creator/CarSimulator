@@ -1,143 +1,107 @@
-using DataLogicLibrary.DirectionStrategies;
+using System;
+using DataLogicLibrary.DirectionStrategies.Interfaces;
 using DataLogicLibrary.DTO;
 using DataLogicLibrary.Infrastructure.Enums;
-using DataLogicLibrary.Services;
-using Xunit;
+using DataLogicLibrary.Services.Interfaces;
 
-namespace CarSimulatorTest
+namespace DataLogicLibrary.Services
 {
-    public class MovementTests
+    public class SimulationLogicService : ISimulationLogicService
     {
-        private StatusDTO CreateStatus(CardinalDirection direction)
+        public delegate IDirectionStrategy DirectionStrategyResolver(
+            MovementAction movementAction);
+
+        private readonly IDirectionContext _directionContext;
+        private readonly IDirectionStrategy _turnLeftStrategy;
+        private readonly IDirectionStrategy _turnRightStrategy;
+        private readonly IDirectionStrategy _driveForwardStrategy;
+        private readonly IDirectionStrategy _reverseStrategy;
+
+        public SimulationLogicService(
+            IDirectionContext directionContext,
+            DirectionStrategyResolver directionStrategyResolver)
         {
-            return new StatusDTO
+            _directionContext = directionContext;
+
+            _turnLeftStrategy =
+                directionStrategyResolver(MovementAction.Left);
+
+            _turnRightStrategy =
+                directionStrategyResolver(MovementAction.Right);
+
+            _driveForwardStrategy =
+                directionStrategyResolver(MovementAction.Forward);
+
+            _reverseStrategy =
+                directionStrategyResolver(MovementAction.Backward);
+        }
+
+        public StatusDTO PerformAction(
+            int userInput,
+            StatusDTO currentStatus)
+        {
+            switch (userInput)
             {
-                CardinalDirection = direction,
-                MovementAction = MovementAction.Forward,
-                GasValue = 20,
-                EnergyValue = 20
-            };
+                case 1:
+                    _directionContext.SetStrategy(_turnLeftStrategy);
+                    break;
+
+                case 2:
+                    _directionContext.SetStrategy(_turnRightStrategy);
+                    break;
+
+                case 3:
+                    _directionContext.SetStrategy(_driveForwardStrategy);
+                    break;
+
+                case 4:
+                    _directionContext.SetStrategy(_reverseStrategy);
+                    break;
+
+                case 5:
+                    currentStatus.EnergyValue = 20;
+                    return currentStatus;
+
+                case 6:
+                    currentStatus.GasValue = 20;
+                    return currentStatus;
+
+                default:
+                    return currentStatus;
+            }
+
+            return _directionContext.ExecuteStrategy(currentStatus);
         }
 
-        private SimulationLogicService CreateSimulationService()
+        public StatusDTO DecreaseStatusValues(
+            int userInput,
+            StatusDTO currentStatus)
         {
-            var directionContext = new DirectionContext();
+            Random random = new Random();
 
-            SimulationLogicService.DirectionStrategyResolver resolver =
-                movementAction =>
-                {
-                    return movementAction switch
-                    {
-                        MovementAction.Left => new TurnLeftStrategy(),
-                        MovementAction.Right => new TurnRightStrategy(),
-                        MovementAction.Forward => new DriveForwardStrategy(),
-                        MovementAction.Backward => new ReverseStrategy(),
-                        _ => throw new System.ArgumentException()
-                    };
-                };
+            int energyDecrease = random.Next(1, 6);
+            int gasDecrease = random.Next(1, 6);
 
-            return new SimulationLogicService(directionContext, resolver);
-        }
+            currentStatus.EnergyValue -= energyDecrease;
 
-        [Fact]
-        public void Test12_Forward_NorthRemainsNorth()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.North);
+            const int driverIsRestingValue = 5;
 
-            var result = service.PerformAction(3, status);
+            if (userInput != driverIsRestingValue)
+            {
+                currentStatus.GasValue -= gasDecrease;
+            }
 
-            Assert.Equal(CardinalDirection.North, result.CardinalDirection);
-        }
+            if (currentStatus.EnergyValue < 0)
+            {
+                currentStatus.EnergyValue = 0;
+            }
 
-        [Fact]
-        public void Test13_Forward_SouthRemainsSouth()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.South);
+            if (currentStatus.GasValue < 0)
+            {
+                currentStatus.GasValue = 0;
+            }
 
-            var result = service.PerformAction(3, status);
-
-            Assert.Equal(CardinalDirection.South, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test14_Forward_EastRemainsEast()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.East);
-
-            var result = service.PerformAction(3, status);
-
-            Assert.Equal(CardinalDirection.East, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test15_Forward_WestRemainsWest()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.West);
-
-            var result = service.PerformAction(3, status);
-
-            Assert.Equal(CardinalDirection.West, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test16_Reverse_NorthBecomesSouth()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.North);
-
-            var result = service.PerformAction(4, status);
-
-            Assert.Equal(CardinalDirection.South, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test17_Reverse_SouthBecomesNorth()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.South);
-
-            var result = service.PerformAction(4, status);
-
-            Assert.Equal(CardinalDirection.North, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test18_Reverse_EastBecomesWest()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.East);
-
-            var result = service.PerformAction(4, status);
-
-            Assert.Equal(CardinalDirection.West, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test19_Reverse_WestBecomesEast()
-        {
-            var service = CreateSimulationService();
-            var status = CreateStatus(CardinalDirection.West);
-
-            var result = service.PerformAction(4, status);
-
-            Assert.Equal(CardinalDirection.East, result.CardinalDirection);
-        }
-
-        [Fact]
-        public void Test20_Refuel_SetsGasToTwenty()
-        {
-            var service = CreateSimulationService();
-
-            var status = CreateStatus(CardinalDirection.North);
-            status.GasValue = 5;
-
-            var result = service.PerformAction(6, status);
-
-            Assert.Equal(20, result.GasValue);
+            return currentStatus;
         }
     }
 }
