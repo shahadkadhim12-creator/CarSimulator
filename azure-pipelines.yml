@@ -28,5 +28,6 @@ steps:
   displayName: 'Run tests'
   inputs:
     command: 'test'
-    projects: 'CarSimulator.Tests/CarSimulator.Tests.csproj'
+    projects: 'TestProject1/TestProject1.csproj'
     arguments: '--configuration Release --no-build'
+
